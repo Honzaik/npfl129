@@ -6,6 +6,8 @@ import sklearn.datasets
 import sklearn.linear_model
 import sklearn.metrics
 import sklearn.model_selection
+from sklearn.metrics import mean_squared_error
+from sklearn.linear_model import LinearRegression
 
 parser = argparse.ArgumentParser()
 # These arguments will be set appropriately by ReCodEx, even if you change them.
@@ -31,7 +33,19 @@ def main(args):
     # TODO: Split the dataset into a train set and a test set.
     # Use `sklearn.model_selection.train_test_split` method call, passing
     # arguments `test_size=args.test_size, random_state=args.seed`.
-    train_data, test_data, train_target, test_target = None, None, None, None
+
+    rowCount = data.shape[0]
+    onesVector = np.ones((rowCount, 1))
+    modifiedData = np.concatenate((data, onesVector), axis = 1)
+
+    train_data, test_data, train_target, test_target = sklearn.model_selection.train_test_split(modifiedData, target, test_size = args.test_size, random_state = args.seed)
+
+    reg = LinearRegression().fit(train_data, train_target)
+
+    explicitTestResult = reg.predict(test_data)
+
+
+    explicit_rmse = np.sqrt(mean_squared_error(explicitTestResult, test_target))
 
     # Generate initial linear regression weights
     weights = generator.uniform(size=train_data.shape[1])
@@ -39,18 +53,37 @@ def main(args):
     train_rmses, test_rmses = [], []
     for epoch in range(args.epochs):
         permutation = generator.permutation(train_data.shape[0])
+        gradient = np.zeros(train_data[0].shape)
+        rounds = train_data.shape[0]//args.batch_size
+        for j in range(rounds):
+            gradients = []
+            for i in range(args.batch_size):
+                x_i = train_data[permutation[j*args.batch_size + i]]
+                t_i = train_target[permutation[j*args.batch_size + i]]
+                gradients.append((x_i.T @ weights - t_i) * x_i)
+                #gradient += (x_i.transpose() @ weights - t_i) * x_i
+
+            weights = weights - args.learning_rate*np.average(gradients, axis=0)
+
+        #weights = weights - args.learning_rate*(gradient/args.batch_size)
 
         # TODO: Process the data in the order of `permutation`.
         # For every `args.batch_size`, average their gradient, and update the weights.
         # A gradient for example (x_i, t_i) is `(x_i^T weights - t_i) * x_i`,
         # and the SGD update is `weights = weights - args.learning_rate * gradient`.
         # You can assume that `args.batch_size` exactly divides `train_data.shape[0]`.
+        trainRes = train_data @ weights
+        testRes = test_data @ weights
 
+        trainRMSE = np.sqrt(mean_squared_error(train_target, trainRes))
+        testRMSE = np.sqrt(mean_squared_error(test_target, testRes))
+        train_rmses.append(trainRMSE)
+        test_rmses.append(testRMSE)
         # TODO: Append current RMSE on train/test to train_rmses/test_rmses.
 
     # TODO: Compute into `explicit_rmse` test data RMSE when
     # fitting `sklearn.linear_model.LinearRegression` on train_data.
-    explicit_rmse = None
+
 
     if args.plot:
         import matplotlib.pyplot as plt

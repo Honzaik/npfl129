@@ -3,15 +3,13 @@ import argparse
 
 import numpy as np
 import sklearn.datasets
-import sklearn.metrics
+from sklearn.metrics import mean_squared_error
 import sklearn.model_selection
 
 parser = argparse.ArgumentParser()
-# These arguments will be set appropriately by ReCodEx, even if you change them.
 parser.add_argument("--recodex", default=False, action="store_true", help="Running in ReCodEx")
 parser.add_argument("--seed", default=42, type=int, help="Random seed")
 parser.add_argument("--test_size", default=0.1, type=lambda x:int(x) if x.isdigit() else float(x), help="Test set size")
-# If you add more arguments, ReCodEx will keep them with your default values.
 
 def main(args):
     # Load Boston housing dataset
@@ -34,11 +32,26 @@ def main(args):
     # TODO: Predict target values on the test set
 
     # TODO: Compute root mean square error on the test set predictions
-    rmse = None
+    rowCount = dataset.data.shape[0]
+    onesVector = np.ones((rowCount, 1))
+    modifiedData = np.concatenate((dataset.data, onesVector), axis = 1)
+
+    splitData = sklearn.model_selection.train_test_split(modifiedData, dataset.target, test_size = args.test_size, random_state = args.seed)
+
+    trainingData = splitData[0]
+    testData = splitData[1]
+    trainingTarget = splitData[2]
+    testTarget = splitData[3]
+
+    w = np.linalg.inv(trainingData.T @ trainingData) @ trainingData.T @ trainingTarget
+
+    testResult = testData @ w
+
+    rmse = np.sqrt(mean_squared_error(testTarget, testResult))
 
     return rmse
 
 if __name__ == "__main__":
-    args = parser.parse_args([] if "__file__" not in globals() else None)
+    args = parser.parse_args()
     rmse = main(args)
     print("{:.2f}".format(rmse))

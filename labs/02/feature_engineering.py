@@ -7,6 +7,9 @@ import sklearn.datasets
 import sklearn.model_selection
 import sklearn.pipeline
 import sklearn.preprocessing
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import PolynomialFeatures
 
 parser = argparse.ArgumentParser()
 # These arguments will be set appropriately by ReCodEx, even if you change them.
@@ -22,7 +25,116 @@ def main(args):
     # TODO: Split the dataset into a train set and a test set.
     # Use `sklearn.model_selection.train_test_split` method call, passing
     # arguments `test_size=args.test_size, random_state=args.seed`.
+    train_data, test_data = sklearn.model_selection.train_test_split(dataset.data, test_size = args.test_size, random_state = args.seed)
+    integerColumns = []
+    otherColumns = []
+    for i in range(train_data.shape[1]):
+        onlyDigits = True
+        for j in range(train_data.shape[0]):
+            if not train_data[j,i].is_integer():
+                onlyDigits = False
+        if onlyDigits == True:
+            integerColumns.append(i)
+        else:
+            otherColumns.append(i)
 
+    integerDataTrain = None
+    integerDataTest = None
+    for column in integerColumns:
+        if integerDataTrain is None:
+            integerDataTrain = np.mat(train_data[:,column])
+            integerDataTest = np.mat(test_data[:,column])
+        else:
+            integerDataTrain = np.concatenate((integerDataTrain ,np.mat(train_data[:,column])), axis = 0)
+            integerDataTest = np.concatenate((integerDataTest ,np.mat(test_data[:,column])), axis = 0)
+
+    otherDataTrain = None
+    otherDataTest = None
+    for column in otherColumns:
+        if otherDataTrain is None:
+            otherDataTrain = np.mat(train_data[:,column])
+            otherDataTest = np.mat(test_data[:,column])
+        else:
+            otherDataTrain = np.concatenate((otherDataTrain ,np.mat(train_data[:,column])), axis = 0)
+            otherDataTest = np.concatenate((otherDataTest ,np.mat(test_data[:,column])), axis = 0)
+
+
+    if(integerDataTrain is not None):
+        integerDataTrain = integerDataTrain.T
+        integerDataTest = integerDataTest.T
+
+        oneHot = OneHotEncoder(handle_unknown="ignore", sparse=False)
+        oneHot.fit(integerDataTrain)
+        oneHotEncodedTrain = oneHot.transform(integerDataTrain)
+        oneHotEncodedTest = oneHot.transform(integerDataTest)
+
+    if(otherDataTrain is not None):
+        otherDataTrain = otherDataTrain.T
+        otherDataTest = otherDataTest.T
+
+        scaler = StandardScaler()
+        scaler.fit(otherDataTrain)
+        scaledTrain = scaler.transform(otherDataTrain)
+        scaledTest = scaler.transform(otherDataTest)
+
+    if (integerDataTrain is not None and otherDataTrain is not None):
+        train_data = np.concatenate((oneHotEncodedTrain,scaledTrain), axis = 1)
+        test_data = np.concatenate((oneHotEncodedTest,scaledTest), axis = 1)
+    else:
+        if integerDataTrain is not None:
+            train_data = oneHotEncodedTrain
+            test_data = oneHotEncodedTest
+        else:
+            train_data = scaledTrain
+            test_data = scaledTest
+
+    poly = PolynomialFeatures(2, include_bias=False)
+    poly.fit(train_data)
+    train_data = poly.transform(train_data)
+    test_data = poly.transform(test_data)
+
+    
+    return train_data, test_data
+'''
+    if(integerDataTrain is not None):
+        integerDataTrain = integerDataTrain.T
+        integerDataTest = integerDataTest.T
+
+        oneHot = OneHotEncoder(handle_unknown="ignore", sparse=False)
+        oneHot.fit(integerDataTrain)
+        oneHotEncodedTrain = oneHot.transform(integerDataTrain)
+        oneHotEncodedTest = oneHot.transform(integerDataTest)
+
+        poly = PolynomialFeatures(2, include_bias=False)
+        poly.fit(oneHotEncodedTrain)
+        oneHotEncodedTrain = poly.transform(oneHotEncodedTrain)
+        oneHotEncodedTest = poly.transform(oneHotEncodedTest)
+
+    if(otherDataTrain is not None):
+        otherDataTrain = otherDataTrain.T
+        otherDataTest = otherDataTest.T
+
+        scaler = StandardScaler()
+        scaler.fit(otherDataTrain)
+        scaledTrain = scaler.transform(otherDataTrain)
+        scaledTest = scaler.transform(otherDataTest)
+
+        poly = PolynomialFeatures(2, include_bias=False)
+        poly.fit(scaledTrain)
+        scaledTrain = poly.transform(scaledTrain)
+        scaledTest = poly.transform(scaledTest)
+
+    if (integerDataTrain is not None and otherDataTrain is not None):
+        train_data = np.concatenate((oneHotEncodedTrain,scaledTrain), axis = 1)
+        test_data = np.concatenate((oneHotEncodedTest,scaledTest), axis = 1)
+    else:
+        if integerDataTrain is not None:
+            train_data = oneHotEncodedTrain
+            test_data = oneHotEncodedTest
+        else:
+            train_data = scaledTrain
+            test_data = scaledTest
+'''
     # TODO: Process the input columns in the following way:
     #
     # - if a column has only integer values, consider it a categorical column
@@ -54,7 +166,6 @@ def main(args):
     # Then transform the training data into `train_data` (you can do both these
     # steps using `fit_transform`), and transform testing data to `test_data`.
 
-    return train_data, test_data
 
 
 if __name__ == "__main__":

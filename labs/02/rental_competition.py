@@ -4,6 +4,14 @@ import lzma
 import os
 import pickle
 import urllib.request
+import sklearn.model_selection
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.metrics import mean_squared_error
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn.linear_model import Ridge
+from sklearn.base import BaseEstimator
+from sklearn.base import TransformerMixin
 
 import numpy as np
 
@@ -38,6 +46,45 @@ class Dataset:
         for key, value in dataset.items():
             setattr(self, key, value)
 
+class MyTransformer(BaseEstimator, TransformerMixin):
+    def __init__(self):
+        return
+        print('\nTransformer init\n')
+
+    def fit(self, X, y = None):
+        #print('\nFitt\n')
+        return self
+
+    def transform(self, X, y = None):
+        #print('\nTransforming\n')
+        data = X.copy()
+
+        integerPart = data[:,0:7]
+        floatPart = data[:,8:]
+
+        oneHot = OneHotEncoder(handle_unknown="ignore", sparse=False)
+        oneHot.fit(integerPart)
+        oneHotEncoded = oneHot.transform(integerPart)
+
+        scaler = StandardScaler()
+        scaler.fit(floatPart)
+        scaledTrain = scaler.transform(floatPart)
+
+        poly = PolynomialFeatures(2, include_bias=False)
+
+        poly.fit(oneHotEncoded)
+        polyInteger = poly.transform(oneHotEncoded)
+
+
+        poly = PolynomialFeatures(2, include_bias=False)
+
+        poly.fit(scaledTrain)
+        polyFloat = poly.transform(scaledTrain)
+
+        combined = np.concatenate((oneHotEncoded,scaledTrain), axis = 1)
+
+        data = np.concatenate((polyInteger,polyFloat,combined), axis = 1)
+        return data
 
 parser = argparse.ArgumentParser()
 # These arguments will be set appropriately by ReCodEx, even if you change them.
@@ -52,9 +99,20 @@ def main(args):
         # We are training a model.
         np.random.seed(args.seed)
         train = Dataset()
-
+        #trainData, devData, trainTarget, devTarget = sklearn.model_selection.train_test_split(train.data, train.target, test_size = 0.0, random_state = args.seed)
         # TODO: Train a model on the given dataset and store it in `model`.
-        model = None
+        #for l in np.arange(0, 10, 0.1):
+        l = 2.6
+        model = Pipeline(steps = [
+            ('trans', MyTransformer()),
+            ('model', Ridge(l))
+        ])
+
+        model.fit(train.data, train.target)
+
+        #res = model.predict(devData)
+        #rmse = np.sqrt(mean_squared_error(res, devTarget))
+        #print(str(round(l,2)) + ' ' + str(rmse))
 
         # Serialize the model.
         with lzma.open(args.model_path, "wb") as model_file:
@@ -68,7 +126,7 @@ def main(args):
             model = pickle.load(model_file)
 
         # TODO: Generate `predictions` with the test set predictions.
-        predictions = None
+        predictions = model.predict(test.data)
 
         return predictions
 

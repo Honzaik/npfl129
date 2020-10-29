@@ -6,6 +6,8 @@ import sklearn.datasets
 import sklearn.linear_model
 import sklearn.metrics
 import sklearn.model_selection
+from sklearn.linear_model import Ridge
+from sklearn.metrics import mean_squared_error
 
 parser = argparse.ArgumentParser()
 # These arguments will be set appropriately by ReCodEx, even if you change them.
@@ -23,14 +25,29 @@ def main(args):
     # Use `sklearn.model_selection.train_test_split` method call, passing
     # arguments `test_size=args.test_size, random_state=args.seed`.
 
+    splitData = sklearn.model_selection.train_test_split(dataset.data, dataset.target, test_size = args.test_size, random_state = args.seed)
+    trainingData = splitData[0]
+    testData = splitData[1]
+    trainingTarget = splitData[2]
+    testTarget = splitData[3]
+
     lambdas = np.geomspace(0.01, 100, num=500)
     # TODO: Using `sklearn.linear_model.Ridge`, fit the train set using
     # L2 regularization, employing above defined lambdas.
     # For every model, compute the root mean squared error
     # (do not forget `sklearn.metrics.mean_squared_error`) and return the
     # lambda producing lowest test error.
-    best_lambda = None
-    best_rmse = None
+    best_lambda = 0
+    best_rmse = float("inf")
+    
+    for l in lambdas:
+        reg = Ridge(l).fit(trainingData, trainingTarget)
+        testResult = reg.predict(testData)
+        rmse = np.sqrt(mean_squared_error(testResult, testTarget))
+        if rmse < best_rmse:
+            best_lambda = l
+            best_rmse = rmse
+
 
     if args.plot:
         # This block is not required to pass in ReCodEx, however, it is useful

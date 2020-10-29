@@ -25,25 +25,37 @@ def main(args):
 
     # TODO: Append a constant feature with value 1 to the end of every input data
 
+    rowCount = data.shape[0]
+    onesVector = np.ones((rowCount, 1))
+    modifiedData = np.concatenate((data, onesVector), axis = 1)
+
     # Generate initial perceptron weights
-    weights = np.zeros(data.shape[1])
+    weights = np.zeros(modifiedData.shape[1])
 
     done = False
     while not done:
-        permutation = generator.permutation(data.shape[0])
+        permutation = generator.permutation(modifiedData.shape[0])
 
         # TODO: Implement the perceptron algorithm, notably one iteration
         # over the training data in the order of `permutation`. During the
         # training data iteration, perform the required update to the `weights`
         # for incorrectly classified examples. If all training instances are
         # correctly classified, set `done=True`, otherwise set `done=False`.
+        done = True
+        for key in permutation:
+            y = weights.T @ modifiedData[key]
+            if target[key]*y <= 0:
+                done = False
+                weights = weights + target[key]*modifiedData[key]
+
+
 
         if args.plot and not done:
             import matplotlib.pyplot as plt
             if args.plot is not True:
                 if not plt.gcf().get_axes(): plt.figure(figsize=(6.4*3, 4.8*3))
                 plt.subplot(3, 3, 1 + len(plt.gcf().get_axes()))
-            plt.scatter(data[:, 0], data[:, 1], c=target)
+            plt.scatter(modifiedData[:, 0], modifiedData[:, 1], c=target)
             xs = np.linspace(*plt.gca().get_xbound() + (50,))
             ys = np.linspace(*plt.gca().get_ybound() + (50,))
             plt.contour(xs, ys, [[[x, y, 1] @ weights for x in xs] for y in ys], levels=[0])
