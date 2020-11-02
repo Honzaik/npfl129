@@ -12,11 +12,42 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--batch_size", default=10, type=int, help="Batch size")
 parser.add_argument("--classes", default=10, type=int, help="Number of classes to use")
 parser.add_argument("--iterations", default=10, type=int, help="Number of iterations over the data")
-parser.add_argument("--learning_rate", default=0.01, type=float, help="Learning rate")
+parser.add_argument("--learning_rate", default=0.005, type=float, help="Learning rate")
 parser.add_argument("--recodex", default=False, action="store_true", help="Running in ReCodEx")
 parser.add_argument("--seed", default=42, type=int, help="Random seed")
 parser.add_argument("--test_size", default=797, type=lambda x:int(x) if x.isdigit() else float(x), help="Test set size")
 # If you add more arguments, ReCodEx will keep them with your default values.
+
+def softmax(vec):
+    maximum = vec.max()
+    vec = vec - maximum
+    denom = 0
+    result = []
+    for value in vec:
+        denom += np.exp(value)
+
+    for value in vec:
+        result.append(np.exp(value)/denom)
+
+    return np.array(result)
+
+def getAccLoss(data, target, weights):
+    total = data.shape[0]
+    successCount = 0
+    lossTotal = 0
+    for i in range(data.shape[0]):
+        prob = softmax(data[i] @ weights)
+        res = np.argmax(prob)
+        lossCoef = prob[target[i]]
+
+        if target[i] == res:
+            successCount += 1
+        else:
+            lossCoef = 1 - lossCoef
+
+        lossTotal -= np.log(lossCoef)
+
+    return successCount/total, lossTotal/total
 
 def main(args):
     # Create a random generator with a given seed
@@ -36,10 +67,24 @@ def main(args):
 
     # Generate initial linear regression weights
     weights = generator.uniform(size=[train_data.shape[1], args.classes], low=-0.1, high=0.1)
-
+    
     for iteration in range(args.iterations):
         permutation = generator.permutation(train_data.shape[0])
 
+        rounds = train_data.shape[0]//args.batch_size
+        
+        for j in range(rounds):
+            gradient = np.zeros(weights.shape)
+            for i in range(args.batch_size):
+                x_i = train_data[permutation[j*args.batch_size + i]]
+                t_i = train_target[permutation[j*args.batch_size + i]]
+                a = softmax(x_i.T @ weights)
+                coef = -a
+                coef[t_i] = 1+coef[t_i]
+                xArray = np.repeat(x_i, 10).reshape(x_i.shape[0], 10)
+                gradient += xArray @ np.diag(coef)
+
+            weights = weights + args.learning_rate*(gradient/args.batch_size)
         # TODO: Process the data in the order of `permutation`.
         # For every `args.batch_size`, average their gradient, and update the weights.
         # You can assume that `args.batch_size` exactly divides `train_data.shape[0]`.
@@ -52,11 +97,12 @@ def main(args):
         # TODO: After the SGD iteration, measure the average loss and accuracy for both the
         # train test and the test set. The loss is the average MLE loss (i.e., the
         # negative log likelihood, or crossentropy loss, or KL loss) per example.
-        train_accuracy, train_loss, test_accuracy, test_loss = None, None, None, None
+        train_accuracy, train_loss = getAccLoss(train_data, train_target, weights)
+        test_accuracy, test_loss = getAccLoss(test_data, test_target, weights)
 
         print("After iteration {}: train loss {:.4f} acc {:.1f}%, test loss {:.4f} acc {:.1f}%".format(
             iteration + 1, train_loss, 100 * train_accuracy, test_loss, 100 * test_accuracy))
-
+    
     return weights
 
 if __name__ == "__main__":
