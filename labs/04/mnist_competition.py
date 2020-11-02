@@ -6,6 +6,12 @@ import os
 import urllib.request
 import sys
 
+from sklearn.base import BaseEstimator
+from sklearn.base import TransformerMixin
+from sklearn.pipeline import Pipeline
+from sklearn.neural_network import MLPClassifier
+from sklearn.preprocessing import StandardScaler, MinMaxScaler, PolynomialFeatures, OneHotEncoder
+
 import numpy as np
 
 class Dataset:
@@ -36,6 +42,32 @@ parser.add_argument("--seed", default=42, type=int, help="Random seed")
 # For these and any other arguments you add, ReCodEx will keep your default value.
 parser.add_argument("--model_path", default="mnist_competition.model", type=str, help="Model path")
 
+
+class MyTransformer(BaseEstimator, TransformerMixin):
+    def __init__(self):
+        return
+        print('\nTransformer init\n')
+
+    def fit(self, X, y = None):
+        #print('\nFitt\n')
+        return self
+
+    def transform(self, X, y = None):
+        #print('\nTransforming\n')
+        data = X.copy()
+
+        oneHot = OneHotEncoder(handle_unknown="ignore", sparse=False)
+        oneHot.fit(X)
+        oneHotEncoded = oneHot.transform(X)
+        #poly = PolynomialFeatures(2, include_bias=False)
+
+        #poly.fit(data)
+        #polyInteger = poly.transform(data)
+
+        #data = np.concatenate((polyInteger), axis = 1)
+        return oneHotEncoded
+
+
 def main(args):
     if args.predict is None:
         # We are training a model.
@@ -43,7 +75,12 @@ def main(args):
         train = Dataset()
 
         # TODO: Train a model on the given dataset and store it in `model`.
-        model = None
+        model = Pipeline(steps = [
+            ('trans', MyTransformer()),
+            ('mlp', MLPClassifier())
+        ])
+
+        model.fit(train.data, train.target)
 
         # If you trained one or more MLPs, you can use the following code
         # to compress it significantly (approximately 12 times). The snippet
@@ -64,7 +101,7 @@ def main(args):
             model = pickle.load(model_file)
 
         # TODO: Generate `predictions` with the test set predictions.
-        predictions = None
+        predictions = model.predict(test.data)
 
         return predictions
 
