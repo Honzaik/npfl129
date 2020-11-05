@@ -12,7 +12,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--batch_size", default=10, type=int, help="Batch size")
 parser.add_argument("--classes", default=10, type=int, help="Number of classes to use")
 parser.add_argument("--hidden_layer", default=50, type=int, help="Hidden layer size")
-parser.add_argument("--iterations", default=10, type=int, help="Number of iterations over the data")
+parser.add_argument("--iterations", default=1, type=int, help="Number of iterations over the data")
 parser.add_argument("--learning_rate", default=0.01, type=float, help="Learning rate")
 parser.add_argument("--recodex", default=False, action="store_true", help="Running in ReCodEx")
 parser.add_argument("--seed", default=42, type=int, help="Random seed")
@@ -69,10 +69,6 @@ def main(args):
                generator.uniform(size=[args.hidden_layer, args.classes], low=-0.1, high=0.1)]
     biases = [np.zeros(args.hidden_layer), np.zeros(args.classes)]
 
-    print(train_data[0])
-    print(train_data.shape)
-    print(train_target)
-
     def forward(inputs):
         # TODO: Implement forward propagation, returning *both* the value of the hidden
         # layer and the value of the output layer.
@@ -100,12 +96,48 @@ def main(args):
         permutation = generator.permutation(train_data.shape[0])
 
         rounds = train_data.shape[0]//args.batch_size
-        
+        rounds = 1
         for j in range(rounds):
-            gradient = np.zeros(weights.shape)
+            gradients = [np.zeros(weights[0].shape), np.zeros(weights[1].shape)]
+            biases = [np.zeros(biases[0].shape), np.zeros(biases[1].shape)]
             for i in range(args.batch_size):
                 x_i = train_data[permutation[j*args.batch_size + i]]
                 t_i = train_target[permutation[j*args.batch_size + i]]
+
+                h = x_i @ weights[0] + biases[0] # W^h x + b^h
+                k = weights[1].shape[1]
+                y_in = h @ weights[1] + biases[1]
+                temp = h @ weights[1] # W^y h
+                softTemp = softmax(y_in)
+                dydyin = np.zeros((k,k))
+                for ii in range(k):
+                    for jj in range(k):
+                        dydyin[ii][jj] = -softTemp[ii]*softTemp[jj]
+                        if ii == jj:
+                            dydyin[ii][jj] += softTemp[ii]
+                        
+                temp = temp @ dydyin
+                for i in range(k):
+                    temp[i] = -1/temp[i]
+                
+                hArray = np.repeat(h, args.classes).reshape(h.shape[0], args.classes)
+                gradients[1] += hArray @ np.diag(temp)
+
+                temp = np.ones(k)
+                softTemp = softmax(y_in)
+                dydyin = np.zeros((k,k))
+                for ii in range(k):
+                    for jj in range(k):
+                        dydyin[ii][jj] = -softTemp[ii]*softTemp[jj]
+                        if ii == jj:
+                            dydyin[ii][jj] += softTemp[ii]
+                        
+                temp = temp @ dydyin
+                for i in range(k):
+                    temp[i] = -1/temp[i]
+                
+                hArray = np.repeat(h, args.classes).reshape(h.shape[0], args.classes)
+                biases[1] += np.ones(k)*temp
                 '''
                 a = softmax(x_i.T @ weights)
                 coef = -a
@@ -114,7 +146,7 @@ def main(args):
                 gradient += xArray @ np.diag(coef)
                 '''
 
-            weights = weights + args.learning_rate*(gradient/args.batch_size)
+            #weights = weights + args.learning_rate*(gradient/args.batch_size)
 
         # TODO: Process the data in the order of `permutation`.
         # For every `args.batch_size`, average their gradient, and update the weights.
@@ -135,8 +167,8 @@ def main(args):
 
         # TODO: After the SGD iteration, measure the accuracy for both the
         # train test and the test set and print it in percentages.
-        train_accuracy, train_loss = getAccLoss(train_data, train_target, weights)
-        test_accuracy, test_loss = getAccLoss(test_data, test_target, weights)
+        train_accuracy, train_loss = 0,0#getAccLoss(train_data, train_target, weights)
+        test_accuracy, test_loss = 0,0#getAccLoss(test_data, test_target, weights)
 
         print("After iteration {}: train acc {:.1f}%, test acc {:.1f}%".format(
             iteration + 1, 100 * train_accuracy, 100 * test_accuracy))

@@ -81,7 +81,7 @@ def main(args):
                 a = softmax(x_i.T @ weights)
                 coef = -a
                 coef[t_i] = 1+coef[t_i]
-                xArray = np.repeat(x_i, 10).reshape(x_i.shape[0], 10)
+                xArray = np.repeat(x_i, args.classes).reshape(x_i.shape[0], args.classes)
                 gradient += xArray @ np.diag(coef)
 
             weights = weights + args.learning_rate*(gradient/args.batch_size)

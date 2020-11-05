@@ -56,16 +56,20 @@ class MyTransformer(BaseEstimator, TransformerMixin):
         #print('\nTransforming\n')
         data = X.copy()
 
-        oneHot = OneHotEncoder(handle_unknown="ignore", sparse=False)
+        rowCount = data.shape[0]
+        onesVector = np.ones((rowCount, 1))
+        data = np.concatenate((data, onesVector), axis = 1)
+
+        '''oneHot = OneHotEncoder(handle_unknown="ignore", sparse=False)
         oneHot.fit(X)
-        oneHotEncoded = oneHot.transform(X)
+        oneHotEncoded = oneHot.transform(X)'''
         #poly = PolynomialFeatures(2, include_bias=False)
 
         #poly.fit(data)
         #polyInteger = poly.transform(data)
 
         #data = np.concatenate((polyInteger), axis = 1)
-        return oneHotEncoded
+        return data
 
 
 def main(args):
@@ -73,6 +77,8 @@ def main(args):
         # We are training a model.
         np.random.seed(args.seed)
         train = Dataset()
+
+
 
         # TODO: Train a model on the given dataset and store it in `model`.
         model = Pipeline(steps = [
