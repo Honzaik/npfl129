@@ -8,6 +8,7 @@ import numpy as np
 import sklearn.metrics
 import sklearn.model_selection
 import sklearn.preprocessing
+from sklearn.neighbors import KNeighborsClassifier
 
 class MNIST:
     """MNIST Dataset.
@@ -29,14 +30,28 @@ class MNIST:
         self.data = self.data.reshape([-1, 28*28]).astype(np.float)
 
 
+
+def softmax(vec):
+    maximum = vec.max()
+    vec = vec - maximum
+    denom = 0
+    result = []
+    for value in vec:
+        denom += np.exp(value)
+
+    for value in vec:
+        result.append(np.exp(value)/denom)
+
+    return np.array(result)
+
 parser = argparse.ArgumentParser()
 # These arguments will be set appropriately by ReCodEx, even if you change them.
-parser.add_argument("--k", default=1, type=int, help="K nearest neighbors to consider")
+parser.add_argument("--k", default=5, type=int, help="K nearest neighbors to consider")
 parser.add_argument("--p", default=2, type=int, help="Use L_p as distance metric")
 parser.add_argument("--plot", default=False, const=True, nargs="?", type=str, help="Plot the predictions")
 parser.add_argument("--recodex", default=False, action="store_true", help="Running in ReCodEx")
 parser.add_argument("--seed", default=42, type=int, help="Random seed")
-parser.add_argument("--test_size", default=1000, type=lambda x:int(x) if x.isdigit() else float(x), help="Test set size")
+parser.add_argument("--test_size", default=500, type=lambda x:int(x) if x.isdigit() else float(x), help="Test set size")
 parser.add_argument("--train_size", default=1000, type=lambda x:int(x) if x.isdigit() else float(x), help="Test set size")
 parser.add_argument("--weights", default="uniform", type=str, help="Weighting to use (uniform/inverse/softmax)")
 # If you add more arguments, ReCodEx will keep them with your default values.
@@ -64,7 +79,58 @@ def main(args):
     #
     # If you want to plot misclassified examples, you need to also fill `test_neighbors`
     # with indices of nearest neighbors; but it is not needed for passing in ReCodEx.
-    test_predictions = None
+
+    neigh = KNeighborsClassifier(n_neighbors=args.k, p=args.p)
+    neigh.fit(train_data, train_target)
+
+
+    distances, indices = neigh.kneighbors(test_data, n_neighbors=args.k, return_distance=True)
+    test_neighbors = []
+    test_predictions = []
+    for dist, ind in zip(distances, indices):
+        classes = {}
+        soft = softmax(-dist)
+        test_neighbors.append(ind)
+        index = 0
+        for d, i in zip(dist, ind):
+            c = train_target[i]
+            if c not in classes:
+                classes[c] = np.array([0,0.0,0.0,[]])
+                classes[c][0] = 0
+                classes[c][1] = 0
+                classes[c][2] = np.Inf
+                
+            weight = 1
+            if args.weights == 'inverse':
+                weight = 1/d
+            elif args.weights == 'softmax':
+                weight = soft[index]
+
+            classes[c][0] += 1*weight
+            classes[c][1] += d
+            classes[c][3].append(i)
+            if i < classes[c][2]:
+                classes[c][2] = i
+
+            index += 1
+
+        chosenClass = -1
+        highestScore = -1
+        lowestIndex = np.Inf
+        for c in classes:
+            if classes[c][0] > highestScore:
+                highestScore = classes[c][0]
+                chosenClass = c
+                lowestIndex = classes[c][2]
+            elif classes[c][0] == highestScore:
+                if c < chosenClass:
+                    lowestIndex = classes[c][2]
+                    chosenClass = c
+
+        #print(classes)
+        #print(chosenClass)
+        test_predictions.append(chosenClass)
+
 
     accuracy = sklearn.metrics.accuracy_score(test_target, test_predictions)
 

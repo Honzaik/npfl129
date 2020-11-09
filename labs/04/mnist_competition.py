@@ -11,6 +11,7 @@ from sklearn.base import TransformerMixin
 from sklearn.pipeline import Pipeline
 from sklearn.neural_network import MLPClassifier
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, PolynomialFeatures, OneHotEncoder
+import sklearn.metrics
 
 import numpy as np
 
@@ -38,7 +39,7 @@ parser = argparse.ArgumentParser()
 # These arguments will be set appropriately by ReCodEx, even if you change them.
 parser.add_argument("--predict", default=None, type=str, help="Run prediction on given data")
 parser.add_argument("--recodex", default=False, action="store_true", help="Running in ReCodEx")
-parser.add_argument("--seed", default=42, type=int, help="Random seed")
+parser.add_argument("--seed", default=10, type=int, help="Random seed")
 # For these and any other arguments you add, ReCodEx will keep your default value.
 parser.add_argument("--model_path", default="mnist_competition.model", type=str, help="Model path")
 
@@ -78,16 +79,17 @@ def main(args):
         np.random.seed(args.seed)
         train = Dataset()
 
-
+        #train_data, test_data, train_target, test_target = sklearn.model_selection.train_test_split(train.data, train.target, test_size = 0.2, random_state = args.seed)
 
         # TODO: Train a model on the given dataset and store it in `model`.
         model = Pipeline(steps = [
             ('trans', MyTransformer()),
-            ('mlp', MLPClassifier())
+            ('mlp', MLPClassifier(activation='relu', alpha=0.00015, hidden_layer_sizes=(150,)))
         ])
 
         model.fit(train.data, train.target)
-
+        #res = model.predict(test_data)
+        #print(sklearn.metrics.accuracy_score(test_target, res))
         # If you trained one or more MLPs, you can use the following code
         # to compress it significantly (approximately 12 times). The snippet
         # assumes the trained MLPClassifier is in `mlp` variable.
