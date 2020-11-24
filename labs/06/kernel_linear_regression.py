@@ -4,7 +4,6 @@
 import argparse
 import sys
 
-import matplotlib.pyplot as plt
 import numpy as np
 import sklearn.metrics
 from sklearn.metrics import mean_squared_error
@@ -129,6 +128,7 @@ def main(args):
                 iteration + 1, train_rmses[-1], test_rmses[-1]))
 
     if args.plot:
+        import matplotlib.pyplot as plt
         # If you want the plotting to work (not required for ReCodEx), compute the `test_predictions`.
         test_predictions = None
 
