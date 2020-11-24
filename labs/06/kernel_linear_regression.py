@@ -1,25 +1,56 @@
 #!/usr/bin/env python3
+# 1cef671d-b420-11e7-a937-00505601122b
+# 7f104f86-b2ae-11e7-a937-00505601122b 
 import argparse
 import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
 import sklearn.metrics
+from sklearn.metrics import mean_squared_error
 
 parser = argparse.ArgumentParser()
 # These arguments will be set appropriately by ReCodEx, even if you change them.
 parser.add_argument("--batch_size", default=1, type=int, help="Batch size")
 parser.add_argument("--data_size", default=50, type=int, help="Data size")
 parser.add_argument("--kernel", default="rbf", type=str, help="Kernel type [poly|rbf]")
-parser.add_argument("--kernel_degree", default=3, type=int, help="Degree for poly kernel")
-parser.add_argument("--kernel_gamma", default=1.0, type=float, help="Gamma for poly and rbf kernel")
+parser.add_argument("--kernel_degree", default=5, type=int, help="Degree for poly kernel")
+parser.add_argument("--kernel_gamma", default=50, type=float, help="Gamma for poly and rbf kernel")
 parser.add_argument("--iterations", default=200, type=int, help="Number of training iterations")
-parser.add_argument("--l2", default=0.0, type=float, help="L2 regularization weight")
+parser.add_argument("--l2", default=0.02, type=float, help="L2 regularization weight")
 parser.add_argument("--learning_rate", default=0.01, type=float, help="Learning rate")
 parser.add_argument("--plot", default=False, const=True, nargs="?", type=str, help="Plot the predictions")
 parser.add_argument("--recodex", default=False, action="store_true", help="Running in ReCodEx")
 parser.add_argument("--seed", default=42, type=int, help="Random seed")
 # If you add more arguments, ReCodEx will keep them with your default values.
+
+def getKMatrix(kernel, data, degree, gamma):
+    matrix = np.zeros((data.shape[0], data.shape[0]))
+
+    for i in range(matrix.shape[0]):
+        for j in range(matrix.shape[0]):
+            if kernel == 'poly':
+                matrix[i][j] = (gamma * data[i] * data[j]  + 1) ** degree
+            else:
+                matrix[i][j] = np.exp(-gamma * (data[i]-data[j]) * (data[i]-data[j]))
+    return matrix
+
+
+def getPredictions(kernel, betas, trainData, toPredict, degree, gamma, bias):
+    ys = np.zeros(toPredict.shape[0])
+    for i in range(toPredict.shape[0]):
+        value = 0
+        for j in range(betas.shape[0]):
+            if kernel == 'poly':
+                value += betas[j] * (gamma * toPredict[i] * trainData[j]  + 1) ** degree
+            else:
+                #value += betas[j] * np.exp(-gamma * (np.abs(toPredict[i]-trainData[j]) * np.abs(toPredict[i]-trainData[j])))
+                value += betas[j] * np.exp(-gamma * (toPredict[i]-trainData[j]) * (toPredict[i]-trainData[j]))
+        ys[i] = value + bias
+
+    return ys
+
+
 
 def main(args):
     # Create a random generator with a given seed
@@ -54,6 +85,11 @@ def main(args):
     # After each iteration, compute RMSE both on training and testing data.
     train_rmses, test_rmses = [], []
 
+    bias = np.average(train_targets)
+
+    trainMatrix = getKMatrix(args.kernel, train_data, args.kernel_degree, args.kernel_gamma)
+    numberOfBetas = train_data.shape[0]
+    betas = np.zeros(numberOfBetas);
     for iteration in range(args.iterations):
         permutation = generator.permutation(train_data.shape[0])
 
@@ -63,6 +99,30 @@ def main(args):
 
         # TODO: Append RMSE on training and testing data to `train_rmses` and
         # `test_rmses` after the iteration.
+        rounds = train_data.shape[0]//args.batch_size
+        for j in range(rounds):
+            oldBetas = np.copy(betas)
+            indexes = []
+            for i in range(args.batch_size):
+                index = permutation[j*args.batch_size + i]
+                indexes.append(index)
+                t_i = train_targets[index]
+                coef = 0
+                for k in range(numberOfBetas):
+                    coef += oldBetas[k]*trainMatrix[index,k]
+                upd = (args.learning_rate/args.batch_size) * (t_i - coef - bias)
+
+                betas[index] = oldBetas[index] + upd - (args.learning_rate * args.l2 * oldBetas[index])
+
+            for i in range(numberOfBetas):
+                if i not in indexes:
+                    betas[i] = oldBetas[i] - args.learning_rate*args.l2*oldBetas[i]
+
+        trainPredictions = getPredictions(args.kernel, betas, train_data, train_data, args.kernel_degree, args.kernel_gamma, bias)
+        testPredictions = getPredictions(args.kernel, betas, train_data, test_data, args.kernel_degree, args.kernel_gamma, bias)
+
+        train_rmses.append(np.sqrt(mean_squared_error(train_targets, trainPredictions)))
+        test_rmses.append(np.sqrt(mean_squared_error(test_targets, testPredictions)))
 
         if (iteration + 1) % 10 == 0:
             print("Iteration {}, train RMSE {:.2f}, test RMSE {:.2f}".format(
