@@ -52,7 +52,7 @@ class RFFsTransformer(sklearn.base.TransformerMixin):
         self._seed = seed
 
     def fit(self, X, y=None):
-        generator = np.random.RandomState(args.seed)
+        generator = np.random.RandomState(self._seed)
 
         # TODO: Generate suitable `w` and `b`.
         # To obtain deterministic results, generate
@@ -74,16 +74,16 @@ class NystroemTransformer(sklearn.base.TransformerMixin):
         self._seed = seed
 
     def _rbf_kernel(self, X, Z):
-        # TODO: Compute the RBF kernel with `args._gamma` for
+        # TODO: Compute the RBF kernel with `self._gamma` for
         # given two sets of examples.
         #
         # A reasonably efficient implementation should probably compute the
-        # kernel line-by-line, computing K(X_i, Z) using a singe `np.linalg.norm`
+        # kernel line-by-line, computing K(X_i, Z) using a single `np.linalg.norm`
         # call, and then concatenate the results using `np.stack`.
         raise NotImplementedError()
 
     def fit(self, X, y=None):
-        generator = np.random.RandomState(args.seed)
+        generator = np.random.RandomState(self._seed)
 
         # TODO: Choose a random subset of examples, utilizing indices
         #   indices = generator.choice(X.shape[0], size=self._n_components, replace=False)
