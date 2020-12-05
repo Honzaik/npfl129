@@ -36,7 +36,7 @@ parser = argparse.ArgumentParser()
 # These arguments will be set appropriately by ReCodEx, even if you change them.
 parser.add_argument("--gamma", default=0.022, type=float, help="RBF gamma")
 parser.add_argument("--max_iter", default=100, type=int, help="Maximum iterations for LR")
-parser.add_argument("--nystroem", default=0, type=int, help="Use Nystroem approximation")
+parser.add_argument("--nystroem", default=300, type=int, help="Use Nystroem approximation")
 parser.add_argument("--original", default=False, action="store_true", help="Use original data")
 parser.add_argument("--recodex", default=False, action="store_true", help="Running in ReCodEx")
 parser.add_argument("--rff", default=0, type=int, help="Use RFFs")
@@ -51,6 +51,9 @@ class RFFsTransformer(sklearn.base.TransformerMixin):
         self._gamma = gamma
         self._seed = seed
 
+    ws = []
+    bs = []
+
     def fit(self, X, y=None):
         generator = np.random.RandomState(self._seed)
 
@@ -61,11 +64,29 @@ class RFFsTransformer(sklearn.base.TransformerMixin):
         # - `b` second, using a single `generator.uniform` call
         #   with output shape `(self._n_components,)`
 
+        #self.ws = np.sqrt(2*self._gamma) * generator.normal(0, 1, size=(self._n_components, X.shape[1]))
+        self.ws = np.sqrt(2*self._gamma) * generator.normal(0, 1, size=(X.shape[1], self._n_components))
+        self.bs = generator.uniform(0, 2*np.pi, size=(self._n_components))
         return self
 
+    def getPhi(self, x, index):
+        result = np.sqrt(2 / self._n_components) * np.cos(self.ws[index] @ x + self.bs[index])
+        return result
+
     def transform(self, X):
-        # TODO: Transform the given `X` using precomputed `w` and `b`.
-        raise NotImplementedError()
+        newX = []
+        for i in range(X.shape[0]):
+            newRow = []
+            newRow = np.sqrt(2 / self._n_components) * np.cos(self.ws.T @ X[i] + self.bs)
+            #for j in range(self._n_components):
+                #newRow.append(self.getPhi(X[i], j))
+            newRow = np.array(newRow)
+            newX.append(newRow)
+
+        newX = np.array(newX)
+
+
+        return newX
 
 class NystroemTransformer(sklearn.base.TransformerMixin):
     def __init__(self, n_components, gamma, seed):
@@ -80,7 +101,23 @@ class NystroemTransformer(sklearn.base.TransformerMixin):
         # A reasonably efficient implementation should probably compute the
         # kernel line-by-line, computing K(X_i, Z) using a single `np.linalg.norm`
         # call, and then concatenate the results using `np.stack`.
-        raise NotImplementedError()
+        kernelLines = []
+        for i in range(X.shape[0]):
+            XiRepeat = np.tile(X[i], Z.shape[0]).reshape(Z.shape[0], X[i].shape[0])
+            norm = np.linalg.norm(XiRepeat - Z, axis=1)
+            powerNorm = np.power(norm, 2)
+
+            res = np.exp(- self._gamma * powerNorm)
+            
+            kernelLines.append(res)
+
+        kernelLines = np.array(kernelLines)
+
+        return kernelLines
+
+    K = []
+    V = []
+    chosen = []
 
     def fit(self, X, y=None):
         generator = np.random.RandomState(self._seed)
@@ -93,13 +130,30 @@ class NystroemTransformer(sklearn.base.TransformerMixin):
         # the SVD (equal to eigenvalue decomposition for real symmetric matrices).
         # Add 1e-12 to the diagonal matrix returned by SVD before computing
         # the inverse of the square root.
+        indices = generator.choice(X.shape[0], size=self._n_components, replace=False)
+
+        self.chosen = X[indices]
+        #self.K = self._getKMatrix(self.chosen, self.chosen)
+        self.K = self._rbf_kernel(self.chosen, self.chosen)
+
+        u, s, v = np.linalg.svd(self.K, hermitian=True)
+        s += 1e-12
+        s = s**(-1/2)
+        diag = np.diag(s)
+
+        self.V = u @ diag @ v
 
         return self
 
     def transform(self, X):
         # TODO: Compute the RBF kernel of `X` and the chosen training examples
         # and then process it using the precomputed `V`.
-        raise NotImplementedError()
+        kernel = self._rbf_kernel(X, self.chosen)
+        newX = []
+        for i in range(X.shape[0]):
+            newX.append(np.array(self.V.T @ kernel[i]))
+
+        return np.array(newX)
 
 def main(args):
     # Use the digits dataset.
