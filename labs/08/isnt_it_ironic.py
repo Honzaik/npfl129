@@ -8,6 +8,13 @@ import sys
 import zipfile
 
 import numpy as np
+from sklearn.metrics import f1_score
+from sklearn.pipeline import Pipeline
+from sklearn.neural_network import MLPClassifier
+from sklearn.preprocessing import StandardScaler, MinMaxScaler, PolynomialFeatures, OneHotEncoder
+from sklearn.feature_extraction.text import TfidfVectorizer
+import sklearn.model_selection
+from sklearn.naive_bayes import MultinomialNB
 
 class Dataset:
     def __init__(self,
@@ -43,8 +50,20 @@ def main(args):
         np.random.seed(args.seed)
         train = Dataset()
 
+        train_data, train_target = train.data, train.target
+        train_data, test_data, train_target, test_target = sklearn.model_selection.train_test_split(train.data, train.target, test_size = 0.2, random_state = args.seed)
+
         # TODO: Train a model on the given dataset and store it in `model`.
-        model = None
+        model = Pipeline(steps = [
+            ('trans',TfidfVectorizer()),
+            ('baive', MultinomialNB())
+        ])
+
+        model.fit(train_data, train_target)
+
+        #predictions = model.predict(test_data);
+
+        #print(f1_score(test_target, predictions));
 
         # Serialize the model.
         with lzma.open(args.model_path, "wb") as model_file:
@@ -59,7 +78,7 @@ def main(args):
 
         # TODO: Generate `predictions` with the test set predictions, either
         # as a Python list of a NumPy array.
-        predictions = None
+        predictions = model.predict(test.data)
 
         return predictions
 
