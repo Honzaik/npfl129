@@ -32,7 +32,9 @@ class Node:
         self.depth = depth
         self.prediction = self.getPrediction()
         self.generator = generator
-
+        self.onlyOneClass = False
+        if len(np.unique(target[self.indices])) == 1:
+            self.onlyOneClass = True
     def getPrediction(self):
         classCounts = []
         for c in self.classes:
@@ -109,7 +111,7 @@ def splitNode(nodeToSplit, save):
 
     if (nodeToSplit.args.max_depth != None) and (nodeToSplit.depth >= nodeToSplit.args.max_depth):
         return False, None
-    if (len(nodeToSplit.indices) <= 1):
+    if (len(nodeToSplit.indices) <= 1 or nodeToSplit.onlyOneClass):
         return False, None
     numberOfFeatures = nodeToSplit.data.shape[1]
     possibleSplitPoints = []
