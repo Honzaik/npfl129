@@ -109,7 +109,8 @@ def splitNode(nodeToSplit, save):
 
     if (nodeToSplit.args.max_depth != None) and (nodeToSplit.depth >= nodeToSplit.args.max_depth):
         return False, None
-
+    if (len(nodeToSplit.indices) <= 1):
+        return False, None
     numberOfFeatures = nodeToSplit.data.shape[1]
     possibleSplitPoints = []
     featureMask = nodeToSplit.generator.uniform(size=numberOfFeatures) <= nodeToSplit.args.feature_subsampling
@@ -171,8 +172,8 @@ def predict(forest, data):
             treePrediction = tree.predictValue(data[i])
             prediction[treePrediction] += 1
         predictions.append(np.argmax(prediction))
-        print(prediction)
-        print(np.argmax(prediction))
+        #print(prediction)
+        #print(np.argmax(prediction))
 
     return predictions
 
