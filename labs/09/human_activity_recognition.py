@@ -9,7 +9,15 @@ import zipfile
 
 import numpy as np
 import pandas as pd
-
+from sklearn.metrics import f1_score
+from sklearn.pipeline import Pipeline
+from sklearn.neural_network import MLPClassifier
+from sklearn.preprocessing import StandardScaler, MinMaxScaler, PolynomialFeatures, OneHotEncoder
+from sklearn.feature_extraction.text import TfidfVectorizer
+import sklearn.model_selection
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.metrics import accuracy_score
 
 class Dataset:
     CLASSES = ["sitting", "sittingdown", "standing", "standingup", "walking"]
@@ -31,7 +39,7 @@ parser = argparse.ArgumentParser()
 # These arguments will be set appropriately by ReCodEx, even if you change them.
 parser.add_argument("--predict", default=None, type=str, help="Run prediction on given data")
 parser.add_argument("--recodex", default=False, action="store_true", help="Running in ReCodEx")
-parser.add_argument("--seed", default=42, type=int, help="Random seed")
+parser.add_argument("--seed", default=44, type=int, help="Random seed")
 # For these and any other arguments you add, ReCodEx will keep your default value.
 parser.add_argument("--model_path", default="human_activity_recognition.model", type=str, help="Model path")
 
@@ -41,8 +49,20 @@ def main(args):
         np.random.seed(args.seed)
         train = Dataset()
 
+        train_data, train_target = train.data, train.target
+        train_data, test_data, train_target, test_target = sklearn.model_selection.train_test_split(train.data, train.target, test_size = 0.2, random_state = args.seed)
+
         # TODO: Train a model on the given dataset and store it in `model`.
-        model = None
+        model = Pipeline(steps = [
+            ('poly',MinMaxScaler()),
+            ('class', RandomForestClassifier(n_estimators=800, criterion='entropy'))
+        ])
+
+        model.fit(train_data, train_target)
+
+        pred = model.predict(test_data)
+
+        print(accuracy_score(test_target, pred))
 
         # Serialize the model.
         with lzma.open(args.model_path, "wb") as model_file:
@@ -57,7 +77,7 @@ def main(args):
 
         # TODO: Generate `predictions` with the test set predictions, either
         # as a Python list of a NumPy array.
-        predictions = None
+        predictions = model.predict(test.data)
 
         return predictions
 
