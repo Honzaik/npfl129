@@ -52,19 +52,19 @@ def main(args):
         train = Dataset()
 
         train_data, train_target = train.data, train.target
-        train_data, test_data, train_target, test_target = sklearn.model_selection.train_test_split(train.data, train.target, test_size = 0.2, random_state = args.seed)
+        #train_data, test_data, train_target, test_target = sklearn.model_selection.train_test_split(train.data, train.target, test_size = 0.2, random_state = args.seed)
 
         # TODO: Train a model on the given dataset and store it in `model`.
         model = Pipeline(steps = [
             ('poly',MinMaxScaler()),
-            ('class', RandomForestClassifier(n_estimators=800, criterion='entropy'))
+            ('class', RandomForestClassifier(n_estimators=810, criterion='entropy'))
         ])
 
         model.fit(train_data, train_target)
 
-        pred = model.predict(test_data)
+        #pred = model.predict(test_data)
 
-        print(accuracy_score(test_target, pred))
+        #print(accuracy_score(test_target, pred))
 
         # Serialize the model.
         with lzma.open(args.model_path, "wb") as model_file:
