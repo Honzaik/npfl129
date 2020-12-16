@@ -5,6 +5,16 @@ import pickle
 import os
 
 import numpy as np
+import pandas as pd
+from sklearn.metrics import f1_score
+from sklearn.pipeline import Pipeline
+from sklearn.neural_network import MLPClassifier
+from sklearn.preprocessing import StandardScaler, MinMaxScaler, PolynomialFeatures, OneHotEncoder
+from sklearn.feature_extraction.text import TfidfVectorizer
+import sklearn.model_selection
+from sklearn.naive_bayes import MultinomialNB, GaussianNB
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.metrics import accuracy_score
 
 class Dataset:
     CLASSES = ["ARA", "DEU", "FRA", "HIN", "ITA", "JPN", "KOR", "SPA", "TEL", "TUR", "ZHO"]
@@ -39,8 +49,16 @@ def main(args):
         train = Dataset("nli_dataset.train.txt")
         dev = Dataset("nli_dataset.dev.txt")
 
-        # TODO: Train a model on the given dataset and store it in `model`.
-        model = None
+        model = Pipeline(steps = [
+            ('trans',TfidfVectorizer(ngram_range=(1,3))),
+            ('baive', GradientBoostingClassifier(n_estimators=300,max_depth=4))
+        ])
+
+        model.fit(train.data, train.target)
+
+        pred = model.predict(dev.data)
+
+        print(accuracy_score(dev.target, pred))
 
         # Serialize the model.
         with lzma.open(args.model_path, "wb") as model_file:
