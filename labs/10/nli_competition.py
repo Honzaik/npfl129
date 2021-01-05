@@ -12,9 +12,12 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, PolynomialFeatures, OneHotEncoder
 from sklearn.feature_extraction.text import TfidfVectorizer
 import sklearn.model_selection
-from sklearn.naive_bayes import MultinomialNB, GaussianNB
+from sklearn.naive_bayes import MultinomialNB, GaussianNB, BernoulliNB, CategoricalNB
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.svm import LinearSVC
 
 class Dataset:
     CLASSES = ["ARA", "DEU", "FRA", "HIN", "ITA", "JPN", "KOR", "SPA", "TEL", "TUR", "ZHO"]
@@ -38,7 +41,7 @@ parser = argparse.ArgumentParser()
 # These arguments will be set appropriately by ReCodEx, even if you change them.
 parser.add_argument("--predict", default=None, type=str, help="Run prediction on given data")
 parser.add_argument("--recodex", default=False, action="store_true", help="Running in ReCodEx")
-parser.add_argument("--seed", default=42, type=int, help="Random seed")
+parser.add_argument("--seed", default=45, type=int, help="Random seed")
 # For these and any other arguments you add, ReCodEx will keep your default value.
 parser.add_argument("--model_path", default="nli_competition.model", type=str, help="Model path")
 
@@ -48,18 +51,21 @@ def main(args):
         np.random.seed(args.seed)
         train = Dataset("nli_dataset.train.txt")
         dev = Dataset("nli_dataset.dev.txt")
-
+        data = train.data
+        target = train.target
         model = Pipeline(steps = [
-            ('trans',TfidfVectorizer(ngram_range=(1,3))),
-            ('baive', GradientBoostingClassifier(n_estimators=300,max_depth=4))
+            ('trans',TfidfVectorizer(ngram_range=(1,3), max_features=70000, max_df=0.04, min_df=3)),
+            ##('baive', LogisticRegression(C=1.1, solver='saga', multi_class='multinomial'))
+            ('clf', LinearSVC(loss='squared_hinge', penalty='l2', C=1))
         ])
 
+        model.fit(data, target)
+        '''
         model.fit(train.data, train.target)
-
         pred = model.predict(dev.data)
 
         print(accuracy_score(dev.target, pred))
-
+        '''
         # Serialize the model.
         with lzma.open(args.model_path, "wb") as model_file:
             pickle.dump(model, model_file)
@@ -73,7 +79,7 @@ def main(args):
 
         # TODO: Generate `predictions` with the test set predictions, either
         # as a Python list of a NumPy array.
-        predictions = None
+        predictions = model.predict(test.data)
 
         return predictions
 

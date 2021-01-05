@@ -32,8 +32,8 @@ class MNIST:
 
 parser = argparse.ArgumentParser()
 # These arguments will be set appropriately by ReCodEx, even if you change them.
-parser.add_argument("--max_iter", default=100, type=int, help="Maximum iterations for LR")
-parser.add_argument("--pca", default=None, type=int, help="PCA dimensionality")
+parser.add_argument("--max_iter", default=20, type=int, help="Maximum iterations for LR")
+parser.add_argument("--pca", default=1, type=int, help="PCA dimensionality")
 parser.add_argument("--recodex", default=False, action="store_true", help="Running in ReCodEx")
 parser.add_argument("--seed", default=42, type=int, help="Random seed")
 parser.add_argument("--test_size", default=0.5, type=lambda x:int(x) if x.isdigit() else float(x), help="Test set size")
@@ -50,18 +50,31 @@ class PCATransformer(sklearn.base.TransformerMixin):
         # TODO: Compute the `args._n_components` principal components
         # and store them as columns of `self._V` matrix.
         if self._n_components <= 10:
+            mean = X.mean(0)
+
+
             # TODO: Use the power iteration algorithm for <= 10 dimensions.
             #
             # To compute every eigenvector, apply 10 iterations, and set
             # the initial value of every eigenvector to
             #   generator.uniform(-1, 1, size=X.shape[1])
             # Compute the vector norms using `np.linalg.norm`.
-            pass
+            S = (1/X.shape[0]) * ((X-mean).T @ (X-mean))
+            self._V = np.zeros(shape=(X.shape[1], self._n_components))
+            for i in range(self._n_components):
+                v = generator.uniform(-1, 1, size=X.shape[1])
+                for _ in range(10):
+                    v = S @ v
+                    l = np.linalg.norm(v)
+                    v = v/l
+                    
+                S = S - l*np.outer(v,v)
+                self._V[:,i] = v
 
         else:
-            # TODO: Use the SVD decomposition computed with `np.linalg.svd`
-            # to find the principal components.
-            pass
+            mean = X.mean(0)
+            u, s, v = np.linalg.svd((X-mean))
+            self._V = v[0:self._n_components,:].T
 
         # We round the principal components to avoid rounding errors during
         # ReCodEx evaluation.
@@ -71,7 +84,7 @@ class PCATransformer(sklearn.base.TransformerMixin):
 
     def transform(self, X):
         # TODO: Transform the given `X` using the precomputed `self._V`.
-        raise NotImplementedError()
+        return X@self._V
 
 def main(args):
     # Use the MNIST dataset.
