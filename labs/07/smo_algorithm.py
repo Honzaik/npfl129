@@ -159,6 +159,7 @@ def smo(args, train_data, train_target, test_data, test_target):
     # TODO: Create an array of support vectors (in the same order in which they appeared
     # in the training data; to avoid rounding errors, consider a training example
     # a support vector only if a_i > `args.tolerance`) and their weights (a_i * t_i).
+
     support_vectors, support_vector_weights = [], []
 
     for i in range(len(a)):

@@ -222,9 +222,9 @@ def main(args):
     #
     # - When splitting a node, consider the features in sequential order, then
     #   for each feature consider all possible split points ordered in ascending
-    #   value, and perform the first encountered split descreasing the criterion
+    #   value, and perform the first encountered split decreasing the criterion
     #   the most. Each split point is an average of two nearest unique feature values
-    #   of the instances corresponding to the given node (i.e., for four instances
+    #   of the instances corresponding to the given node (e.g., for four instances
     #   with values 1, 7, 3, 3 the split points are 2 and 5).
     #
     # - Allow splitting a node only if:
